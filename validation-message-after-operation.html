@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Operation complete</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 30px; background: #fff; color: #203b32; font: 14px system-ui, sans-serif; text-align: center; }
+    .success { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 22px; background: #e9f2e2; color: #4e793c; font-size: 32px; }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -.8px; }
+    h2 { margin: 0; font-size: 20px; font-weight: 500; color: #527546; }
+    p { color: #7a887f; line-height: 1.7; margin: 20px 0 26px; }
+    .actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    button { padding: 12px 18px; border: 1px solid #d8e1d4; border-radius: 8px; background: white; color: #496747; font: inherit; cursor: pointer; }
+    button.primary { background: #234f3b; border-color: #234f3b; color: white; font-weight: 600; }
+    button:focus-visible { outline: 3px solid #87b86e; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main aria-labelledby="completion-title">
+    <div class="success" aria-hidden="true">✓</div>
+    <h1 id="completion-title">Operation complete!</h1>
+    <h2>Well done!</h2>
+    <p>All available bookings and required cancellation remarks are complete.<br>Your final time and performance score are saved.</p>
+    <div class="actions">
+      <button type="button" id="close-completion">Close</button>
+      <button type="button" id="view-current-report" class="primary">View current report →</button>
+    </div>
+  </main>
+  <script>
+    'use strict';
+    // This page is embedded in the hotel's completion dialog, including for file:// use.
+    function sendAction(action) {
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'hotel-operation-complete', action }, '*');
+      } else {
+        window.location.href = action === 'report' ? 'hotel_page.html#performance/current' : 'hotel_page.html#bookings';
+      }
+    }
+    document.getElementById('close-completion').addEventListener('click', () => sendAction('close'));
+    document.getElementById('view-current-report').addEventListener('click', () => sendAction('report'));
+  </script>
+</body>
+</html>
