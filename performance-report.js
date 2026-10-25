@@ -9,8 +9,8 @@ window.PerformanceReport = (() => {
   function metrics(state, now = Date.now()) {
     const elapsed = state.startedAt ? Math.max(0, (state.finishedAt || now) - state.startedAt) : 0;
     const target = (state.targetMinutes || 2) * 60000;
-    const penalty = Math.min(50, Math.floor(Math.max(0, elapsed - target) / 5000) * 2);
-    return { elapsed, penalty, score: 50 - penalty };
+    const penalty = Math.min(100, Math.floor(Math.max(0, elapsed - target) / 5000) * 2);
+    return { elapsed, penalty, score: 100 - penalty };
   }
   function render(state) {
     const student = state.student || studentDetails();
@@ -72,17 +72,17 @@ window.PerformanceReport = (() => {
       finally { $('download-report').disabled = false; }
     });
     const addOptions = (id, max, unit) => {
-      for (let n = 1; n <= max; n++) { const option = document.createElement('option'); option.value = String(n); option.textContent = `${n} ${unit}${n === 1 ? '' : 's'}`; $(id).append(option); }
+      for (let n = 1; n <= max; n++) { const option = document.createElement('option'); option.value = String(n); option.textContent = unit === 'minute' && n === 60 ? '1 hour (60 minutes)' : `${n} ${unit}${n === 1 ? '' : 's'}`; $(id).append(option); }
     };
     addOptions('simulation-guests', window.GUESTS_DATA.length, 'guest');
-    addOptions('simulation-minutes', 30, 'minute');
+    addOptions('simulation-minutes', 60, 'minute');
     $('simulation-close').addEventListener('click', () => $('simulation-dialog').close());
     $('simulation-cancel').addEventListener('click', () => $('simulation-dialog').close());
     $('simulation-form').addEventListener('submit', event => {
       event.preventDefault();
       const count = Number($('simulation-guests').value), minutes = Number($('simulation-minutes').value);
-      if (!Number.isInteger(count) || count < 1 || count > window.GUESTS_DATA.length || !Number.isInteger(minutes) || minutes < 1 || minutes > 30) {
-        $('simulation-error').textContent = 'Choose a valid guest count and a time limit from 1 to 30 minutes.'; return;
+      if (!Number.isInteger(count) || count < 1 || count > window.GUESTS_DATA.length || !Number.isInteger(minutes) || minutes < 1 || minutes > 60) {
+        $('simulation-error').textContent = 'Choose a valid guest count and a time limit from 1 minute to 1 hour.'; return;
       }
       const warning = getState().startedAt ? '\nThis replaces the current session and its booking progress.' : '';
       if (!window.confirm(`Are you sure you want to simulate a hotel operation with ${count} guest${count === 1 ? '' : 's'} in ${minutes} minute${minutes === 1 ? '' : 's'}?${warning}`)) return;
@@ -103,7 +103,7 @@ window.PerformanceReport = (() => {
       // Prominent score occupies its own column, separate from the student details.
       ctx.fillStyle = '#edf4e8'; ctx.fillRect(860,205,310,225);
       ctx.fillStyle = '#527546'; ctx.font = 'bold 25px Arial'; ctx.fillText('TIME SCORE',1015,264);
-      ctx.fillStyle = '#203b32'; ctx.font = 'bold 76px Arial'; ctx.fillText(summary.score + '/50',1015,365);
+      ctx.fillStyle = '#203b32'; ctx.font = 'bold 76px Arial'; ctx.fillText(summary.score + '/100',1015,365);
       ctx.textAlign = 'center'; ctx.fillStyle = '#203b32'; ctx.font = '24px Arial';
       ctx.fillText('This document serves as your score for the simulation.',620,1420);
       ctx.fillStyle = '#527546'; ctx.font = 'italic 25px Arial';
@@ -145,7 +145,7 @@ window.PerformanceReport = (() => {
     line(`Housekeeping confirmed: ${housekeeping.confirmed} / ${housekeeping.total}`);
     line(`Tasks done: ${tasks.done+analysis.submitted+housekeeping.confirmed} / ${tasks.total+analysis.total+housekeeping.total}`);
     line('Time target: ' + (state.targetMinutes || 2) + ' minute(s) | Elapsed: ' + formatTime(summary.elapsed));
-    line('Scoring: 50 points within target; minus 2 per full extra 5 seconds.',false,21);
+    line('Scoring: 100 points within target; minus 2 per full extra 5 seconds.',false,21);
     line('Generated: ' + new Date(capturedAt).toLocaleString(),false,21);
     const encoder = new TextEncoder(), chunks = [], offsets = [0]; let length = 0;
     const add = data => { const bytes = typeof data === 'string' ? encoder.encode(data) : data; chunks.push(bytes); length += bytes.length; };

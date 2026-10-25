@@ -9,6 +9,11 @@ window.AnalysisReport = (() => {
   }
   const date = value => new Date(`${value}T00:00:00Z`).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
   const range = request => `${date(request.from)} – ${date(request.to)}`;
+  const wordCount = text => String(text).trim().split(/\s+/).filter(word=>/[\p{L}\p{N}]/u.test(word)).length;
+  function updateWordCount() {
+    const count=wordCount($('analysis-remark').value);
+    $('analysis-word-count').textContent=`${count} words · 20–100 required${count>=20&&count<=100?' · Ready to submit':count>100?' · Over maximum':''}`;
+  }
   function persist() { localStorage.setItem(storageKey,JSON.stringify(requests.map(({id,status,remark,submittedAt})=>({id,status,remark,submittedAt})))); }
   function badge() {
     const pending = requests.filter(r=>r.status==='pending').length;
@@ -21,6 +26,7 @@ window.AnalysisReport = (() => {
     $('analysis-dialog-title').textContent=`${request.id} · ${request.title}`;
     $('analysis-task').textContent=`Navigate to Hotel Analytics and filter check-in dates from ${range(request)}. ${request.task}`;
     $('analysis-remark').value=request.remark || ''; $('analysis-submit-error').textContent='';
+    updateWordCount();
     $('analysis-submit').textContent=request.status==='submitted'?'Update submitted report':'Submit analysis report';
     $('analysis-dialog').showModal();
   }
@@ -50,10 +56,13 @@ window.AnalysisReport = (() => {
     ['analysis-search','analysis-status','analysis-sort'].forEach(id=>$(id).addEventListener(id==='analysis-search'?'input':'change',render));
     $('analysis-dialog-close').addEventListener('click',()=>$('analysis-dialog').close());
     $('analysis-dialog-analytics').addEventListener('click',()=>{const request=requests.find(r=>r.id===editingId);if(request)visit(request);});
-    $('analysis-remark').addEventListener('input',()=>{const request=requests.find(r=>r.id===editingId);if(request?.status==='pending'){request.remark=$('analysis-remark').value.slice(0,5000);persist();}});
+    $('analysis-remark').addEventListener('input',()=>{updateWordCount();$('analysis-submit-error').textContent='';const request=requests.find(r=>r.id===editingId);if(request?.status==='pending'){request.remark=$('analysis-remark').value.slice(0,5000);persist();}});
     $('analysis-submit-form').addEventListener('submit',event=>{
       event.preventDefault();const request=requests.find(r=>r.id===editingId);if(!request)return;
       const remark=$('analysis-remark').value.trim();if(!remark){$('analysis-submit-error').textContent='Describe your analysis before submitting the report.';return;}
+      const count=wordCount(remark.slice(0,5000));
+      if(count<20){$('analysis-submit-error').textContent=`At least 20 words are required. You currently have ${count}; add ${20-count} more word(s).`;return;}
+      if(count>100){$('analysis-submit-error').textContent=`Maximum 100 words allowed. You currently have ${count}; remove ${count-100} word(s).`;return;}
       request.remark=remark.slice(0,5000);request.status='submitted';request.submittedAt=Date.now();persist();$('analysis-dialog').close();render();
       $('analysis-message').textContent=`${request.id}: ANALYSIS REPORT SUBMITTED.`;
       if (afterSubmit) afterSubmit();
