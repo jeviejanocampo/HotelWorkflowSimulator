@@ -28,7 +28,9 @@ window.PerformanceReport = (() => {
     const { elapsed, penalty, score } = metrics(state);
     const completed = state.guests.filter(g => g.status === 'confirmed');
     const tasks = ActivityLog.progress(state);
-    document.getElementById('report-task-progress').textContent = `Total tasks: ${tasks.done} / ${tasks.total} · Bookings: ${tasks.booked} / ${tasks.bookings} · Cancelled remarks: ${tasks.remarked} / ${tasks.cancelled}`;
+    const analysis = AnalysisReport.progress();
+    const housekeeping = Housekeeping.progress();
+    document.getElementById('report-task-progress').textContent = `Total tasks: ${tasks.done+analysis.submitted+housekeeping.confirmed} / ${tasks.total+analysis.total+housekeeping.total} · Bookings: ${tasks.booked} / ${tasks.bookings} · Cancelled remarks: ${tasks.remarked} / ${tasks.cancelled} · Analysis reports: ${analysis.submitted} / ${analysis.total} · Housekeeping: ${housekeeping.confirmed} / ${housekeeping.total}`;
     document.getElementById('time-score').textContent = score;
     document.getElementById('penalty').textContent = `${penalty} pts`;
     document.getElementById('report-completed').textContent = `${completed.length} / ${eligible.length}`;
@@ -38,7 +40,7 @@ window.PerformanceReport = (() => {
     document.getElementById('score-caption').textContent = state.finishedAt ? 'Final time score' : state.startedAt ? 'Live time score' : 'Available score · configure a session';
     document.getElementById('time-meter').style.width = `${Math.min(100, elapsed / (minutes * 600))}%`;
     document.getElementById('time-meter').style.background = elapsed > minutes * 60000 ? '#c29045' : '#83a85f';
-    document.getElementById('timer-description').textContent = state.finishedAt ? 'Operation successful! All bookings and required cancellation remarks are complete. Your final score is saved.' : state.startedAt ? `Session is running. Complete the remaining bookings and ${tasks.pendingRemarks} cancellation remark(s) in Activity log to finish.` : 'Choose your settings and Start simulation to begin timing.';
+    document.getElementById('timer-description').textContent = state.finishedAt ? 'Operation successful! Booking Request, Activity log, Analysis Report, and Housekeeping badges are all zero. Your final score is saved.' : state.startedAt ? `Session is running. Complete the remaining bookings, ${tasks.pendingRemarks} cancellation remark(s), ${analysis.pending} analysis report(s), and ${housekeeping.pending} housekeeping task(s) to finish.` : 'Choose your settings and Start simulation to begin timing.';
     const rows = document.getElementById('activity-rows');
     rows.replaceChildren();
     if (!completed.length) { const row = rows.insertRow(); const cell = row.insertCell(); cell.colSpan = 4; cell.className = 'muted'; cell.textContent = 'No completed bookings yet.'; }
@@ -137,7 +139,10 @@ window.PerformanceReport = (() => {
     line('Status: ' + (state.finishedAt ? 'Complete - final score' : state.startedAt ? 'In progress - current snapshot' : 'Not started'));
     line('Guests catered: ' + state.guests.filter(g=>g.status==='confirmed').length + ' / ' + state.guests.filter(g=>!['cancelled','refund'].includes(g.status)).length);
     const tasks = ActivityLog.progress(state);
-    line(`Cancelled remarks: ${tasks.remarked} / ${tasks.cancelled} | Tasks done: ${tasks.done} / ${tasks.total}`);
+    const analysis = AnalysisReport.progress();
+    line(`Cancelled remarks: ${tasks.remarked} / ${tasks.cancelled} | Analysis reports: ${analysis.submitted} / ${analysis.total}`);
+    line(`Housekeeping confirmed: ${housekeeping.confirmed} / ${housekeeping.total}`);
+    line(`Tasks done: ${tasks.done+analysis.submitted+housekeeping.confirmed} / ${tasks.total+analysis.total+housekeeping.total}`);
     line('Time target: ' + (state.targetMinutes || 2) + ' minute(s) | Elapsed: ' + formatTime(summary.elapsed));
     line('Scoring: 50 points within target; minus 2 per full extra 5 seconds.',false,21);
     line('Generated: ' + new Date(capturedAt).toLocaleString(),false,21);

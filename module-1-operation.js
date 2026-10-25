@@ -33,24 +33,37 @@
       }
     }
   } catch { state = initial(); }
-  let selected = null, method = 'qr', imageUrl = null;
+  let selected = null, method = 'qr', imageUrl = null, announcedFinish = null;
   const $ = id => document.getElementById(id);
   const money = amount => new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(amount);
   const date = value => new Date(`${value}T00:00:00`).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
   const save = () => {
     ActivityLog.sync(state);
     const tasks = ActivityLog.progress(state);
-    const complete = state.configured && state.startedAt && tasks.done === tasks.total;
+    const complete = state.configured && state.startedAt && tasks.done === tasks.total && AnalysisReport.progress().pending === 0 && Housekeeping.progress().pending === 0;
     if (complete && !state.finishedAt) state.finishedAt = Date.now();
     if (!complete && state.finishedAt) { state.startedAt += Date.now() - state.finishedAt; state.finishedAt = null; }
     localStorage.setItem(KEY, JSON.stringify(state));
   };
   function announceCompletion() {
     PerformanceReport.render(state);
-    if (state.finishedAt && !$('completion-dialog').open) $('completion-dialog').showModal();
+    if (state.finishedAt && state.finishedAt !== announcedFinish && AnalysisReport.progress().pending === 0 && Housekeeping.progress().pending === 0 && !$('completion-dialog').open) {
+      announcedFinish = state.finishedAt; $('completion-dialog').showModal();
+    }
+    if (!state.finishedAt) announcedFinish = null;
   }
   ActivityLog.init(() => state, save, announceCompletion);
   HotelAnalytics.init(() => state);
+  Housekeeping.init(() => { save(); announceCompletion(); });
+  CreateResume.init();
+  AnalysisReport.init(request => {
+    HotelAnalytics.applyDateRange(request.from,request.to);
+    window.location.hash = 'hotel-analytics'; show('hotel-analytics');
+  }, () => { save(); announceCompletion(); });
+  // Reopen older completed sessions if their analysis or housekeeping tasks are still pending.
+  if (state.finishedAt && (AnalysisReport.progress().pending > 0 || Housekeeping.progress().pending > 0)) {
+    state.startedAt += Date.now() - state.finishedAt; state.finishedAt = null; save();
+  }
   PerformanceReport.initSetup(() => state, (count, minutes) => {
     state = initial(count, minutes); state.configured = true; state.startedAt = Date.now(); state.student = PerformanceReport.studentDetails();
     selected = null; save();
@@ -61,12 +74,14 @@
   });
   function show(view) {
     ActivityLog.sync(state);
-    ['bookings','guest-entry','payment','performance','activity-log','hotel-analytics'].forEach(name => { $(`${name}-view`).hidden = name !== view; });
-    $('nav-bookings').classList.toggle('active',['bookings','guest-entry','payment'].includes(view)); $('nav-performance').classList.toggle('active',view === 'performance'); $('nav-activity-log').classList.toggle('active',view === 'activity-log'); $('nav-hotel-analytics').classList.toggle('active',view === 'hotel-analytics');
-    $('breadcrumb').textContent = view === 'hotel-analytics' ? 'Hotel Analytics' : view === 'activity-log' ? 'Activity log' : view === 'performance' ? 'Performance Report' : view === 'payment' ? 'Booking Request / Payment' : view === 'guest-entry' ? 'Booking Request / New Guest' : 'Booking Request';
+    ['bookings','guest-entry','payment','performance','activity-log','hotel-analytics','analysis-report','housekeeping','create-resume'].forEach(name => { $(`${name}-view`).hidden = name !== view; });
+    $('nav-bookings').classList.toggle('active',['bookings','guest-entry','payment'].includes(view)); $('nav-performance').classList.toggle('active',view === 'performance'); $('nav-activity-log').classList.toggle('active',view === 'activity-log'); $('nav-hotel-analytics').classList.toggle('active',view === 'hotel-analytics'); $('nav-analysis-report').classList.toggle('active',view === 'analysis-report'); $('nav-housekeeping').classList.toggle('active',view === 'housekeeping'); $('nav-create-resume').classList.toggle('active',view === 'create-resume');
+    $('breadcrumb').textContent = view === 'create-resume' ? 'Create your own Resume' : view === 'housekeeping' ? 'Housekeeping' : view === 'analysis-report' ? 'Analysis Report' : view === 'hotel-analytics' ? 'Hotel Analytics' : view === 'activity-log' ? 'Activity log' : view === 'performance' ? 'Performance Report' : view === 'payment' ? 'Booking Request / Payment' : view === 'guest-entry' ? 'Booking Request / New Guest' : 'Booking Request';
     if (view === 'bookings') renderBookings();
     if (view === 'activity-log') ActivityLog.render();
     if (view === 'hotel-analytics') HotelAnalytics.render();
+    if (view === 'analysis-report') AnalysisReport.render();
+    if (view === 'housekeeping') Housekeeping.render();
     PerformanceReport.render(state);
   }
   function renderBookings() {
@@ -174,7 +189,7 @@
   ['search','status-filter','sort'].forEach(id=>$(id).addEventListener(id==='search'?'input':'change',renderBookings));
   $('back-bookings').addEventListener('click',()=>{window.location.hash='bookings';});
   $('logout').addEventListener('click',()=>{sessionStorage.removeItem('hotel-auth');window.location.href='index.html';});
-  $('reset-session').addEventListener('click',()=>{if(!window.confirm('Reset all guest bookings, payment records, and the session score?'))return;state=initial();selected=null;save();$('booking-notice').hidden=true;window.location.hash='bookings';show('bookings');});
+  $('reset-session').addEventListener('click',()=>{if(!window.confirm('Reset all guest bookings, payments, activity remarks, analysis reports, housekeeping tasks, and the session score?'))return;state=initial();selected=null;announcedFinish=null;AnalysisReport.reset();Housekeeping.reset();save();$('booking-notice').hidden=true;window.location.hash='bookings';show('bookings');});
   $('nav-performance').addEventListener('click', event => { event.preventDefault(); if (window.location.hash === '#performance') { show('performance'); PerformanceReport.openSetup(state); } else window.location.hash = 'performance'; });
   window.addEventListener('message', event => {
     if (event.source !== $('completion-frame').contentWindow || event.data?.type !== 'hotel-operation-complete' || !$('completion-dialog').open) return;
@@ -185,6 +200,6 @@
       window.location.hash = 'performance/current'; show('performance');
     }
   });
-  function route(){const hash=window.location.hash.slice(1);if(hash==='hotel-analytics'){show('hotel-analytics');}else if(hash==='activity-log'){show('activity-log');}else if(hash==='performance/current'){show('performance');}else if(hash==='performance'){show('performance');PerformanceReport.openSetup(state);}else if(hash.startsWith('guest-entry/')){const id=hash.slice(12);const guest=state.guests.find(g=>g.id===id&&g.bookingType==='new'&&isActionable(g));if(guest)openGuestEntry(id);else{window.location.hash='bookings';show('bookings');}}else if(hash.startsWith('payment/')){const id=hash.slice(8);const guest=state.guests.find(g=>g.id===id&&isActionable(g));if(guest)openPayment(id);else{window.location.hash='bookings';show('bookings');}}else show('bookings');}
+  function route(){const hash=window.location.hash.slice(1);if(hash==='create-resume'){show('create-resume');}else if(hash==='housekeeping'){show('housekeeping');}else if(hash==='analysis-report'){show('analysis-report');}else if(hash==='hotel-analytics'){show('hotel-analytics');}else if(hash==='activity-log'){show('activity-log');}else if(hash==='performance/current'){show('performance');}else if(hash==='performance'){show('performance');PerformanceReport.openSetup(state);}else if(hash.startsWith('guest-entry/')){const id=hash.slice(12);const guest=state.guests.find(g=>g.id===id&&g.bookingType==='new'&&isActionable(g));if(guest)openGuestEntry(id);else{window.location.hash='bookings';show('bookings');}}else if(hash.startsWith('payment/')){const id=hash.slice(8);const guest=state.guests.find(g=>g.id===id&&isActionable(g));if(guest)openPayment(id);else{window.location.hash='bookings';show('bookings');}}else show('bookings');}
   window.addEventListener('hashchange',route);route();setInterval(()=>PerformanceReport.render(state),250);
 })();

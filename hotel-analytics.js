@@ -100,5 +100,10 @@ window.HotelAnalytics = (() => {
     $('analytics-next').addEventListener('click',()=>{if(!$('analytics-next').disabled){currentPage++;render();}});
     $('analytics-reset').addEventListener('click',()=>{currentPage=1;['analytics-search','analytics-from','analytics-to'].forEach(id=>$(id).value='');['analytics-status','analytics-room'].forEach(id=>$(id).value='all');$('analytics-sort').value='checkin';render();});
   }
-  return {init,render,aggregate};
+  function applyDateRange(from,to) {
+    currentPage=1;
+    $('analytics-search').value=''; $('analytics-status').value='all'; $('analytics-room').value='all';
+    $('analytics-from').value=from; $('analytics-to').value=to; $('analytics-sort').value='checkin';
+  }
+  return {init,render,aggregate,applyDateRange};
 })();
