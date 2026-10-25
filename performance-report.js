@@ -140,6 +140,7 @@ window.PerformanceReport = (() => {
     line('Guests catered: ' + state.guests.filter(g=>g.status==='confirmed').length + ' / ' + state.guests.filter(g=>!['cancelled','refund'].includes(g.status)).length);
     const tasks = ActivityLog.progress(state);
     const analysis = AnalysisReport.progress();
+    const housekeeping = Housekeeping.progress();
     line(`Cancelled remarks: ${tasks.remarked} / ${tasks.cancelled} | Analysis reports: ${analysis.submitted} / ${analysis.total}`);
     line(`Housekeeping confirmed: ${housekeeping.confirmed} / ${housekeeping.total}`);
     line(`Tasks done: ${tasks.done+analysis.submitted+housekeeping.confirmed} / ${tasks.total+analysis.total+housekeeping.total}`);
