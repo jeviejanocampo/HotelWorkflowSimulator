@@ -9,7 +9,7 @@ window.PerformanceReport = (() => {
   function metrics(state, now = Date.now()) {
     const elapsed = state.startedAt ? Math.max(0, (state.finishedAt || now) - state.startedAt) : 0;
     const target = (state.targetMinutes || 2) * 60000;
-    const penalty = Math.min(100, Math.floor(Math.max(0, elapsed - target) / 5000) * 2);
+    const penalty = Math.min(100, Math.floor(Math.max(0, elapsed - target) / 10000) * 2);
     return { elapsed, penalty, score: 100 - penalty };
   }
   function render(state) {
@@ -40,13 +40,15 @@ window.PerformanceReport = (() => {
     document.getElementById('score-caption').textContent = state.finishedAt ? 'Final time score' : state.startedAt ? 'Live time score' : 'Available score · configure a session';
     document.getElementById('time-meter').style.width = `${Math.min(100, elapsed / (minutes * 600))}%`;
     document.getElementById('time-meter').style.background = elapsed > minutes * 60000 ? '#c29045' : '#83a85f';
-    document.getElementById('timer-description').textContent = state.finishedAt ? 'Operation successful! Booking Request, Activity log, Analysis Report, and Housekeeping badges are all zero. Your final score is saved.' : state.startedAt ? `Session is running. Complete the remaining bookings, ${tasks.pendingRemarks} cancellation remark(s), ${analysis.pending} analysis report(s), and ${housekeeping.pending} housekeeping task(s) to finish.` : 'Choose your settings and Start simulation to begin timing.';
+    document.getElementById('timer-description').textContent = state.finishedAt ? 'Operation successful! Booking Request, Activity log, Analysis Report, and Housekeeping badges are all zero. Your final score is saved.' : state.startedAt ? `Session is running. Complete the remaining bookings, ${tasks.pendingRemarks} cancellation remark(s), ${analysis.pending} analysis report(s), and ${housekeeping.pending} unfinished housekeeping task(s), including ${housekeeping.ongoing} ongoing, to finish.` : 'Choose your settings and Start simulation to begin timing.';
     const rows = document.getElementById('activity-rows');
     rows.replaceChildren();
     if (!completed.length) { const row = rows.insertRow(); const cell = row.insertCell(); cell.colSpan = 4; cell.className = 'muted'; cell.textContent = 'No completed bookings yet.'; }
     completed.forEach(g => { const row = rows.insertRow(); [g.enteredDetails?.name || g.name, g.payment.method === 'cash' ? 'Cash' : 'Custom QR', formatTime(g.confirmedAt - g.openedAt), new Date(g.confirmedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})].forEach(value => {row.insertCell().textContent = value;}); });
   }
   function openSetup(state) {
+    // Keep the active or completed session until Reset simulation clears it.
+    if (state.configured || state.startedAt) return;
     const dialog = document.getElementById('simulation-dialog');
     document.getElementById('simulation-guests').value = String(state.guests.length);
     document.getElementById('simulation-minutes').value = String(state.targetMinutes || 2);
@@ -93,13 +95,16 @@ window.PerformanceReport = (() => {
   // No network connection, external library, or print dialog is required for downloading.
   async function createPdf(state) {
     const capturedAt = Date.now(), summary = metrics(state,capturedAt), student = state.student || studentDetails();
+    const submittedReports = AnalysisReport.submittedReports();
+    const operatorNotes = (state.activityLog || []).filter(row=>typeof row.remarks==='string'&&row.remarks.trim());
     const pages = []; let canvas, ctx, y;
-    function page() {
+    function page(details = false) {
       canvas = document.createElement('canvas'); canvas.width = 1240; canvas.height = 1754;
       ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,1240,1754);
       ctx.fillStyle = '#183d33'; ctx.fillRect(0,0,1240,145);
       ctx.fillStyle = '#fff'; ctx.font = 'bold 34px Arial'; ctx.textAlign = 'center';
       ctx.fillText('CHECKIN 1 PERFORMANCE REPORT',620,88);
+      if (!details) {
       // Prominent score occupies its own column, separate from the student details.
       ctx.fillStyle = '#edf4e8'; ctx.fillRect(860,205,310,225);
       ctx.fillStyle = '#527546'; ctx.font = 'bold 25px Arial'; ctx.fillText('TIME SCORE',1015,264);
@@ -109,6 +114,7 @@ window.PerformanceReport = (() => {
       ctx.fillStyle = '#527546'; ctx.font = 'italic 25px Arial';
       ctx.fillText('Keep moving forward, future tourism professional.',620,1480);
       ctx.font = '22px Arial'; ctx.fillText('- by Ocampo',620,1520);
+      }
       ctx.fillStyle = '#7a887f'; ctx.font = '21px Arial'; ctx.fillText('System is made with love.',620,1605);
       ctx.fillStyle = '#e0e6dc'; ctx.fillRect(70,1640,1100,2);
       ctx.fillStyle = '#7a887f'; ctx.font = '19px Arial'; ctx.textAlign = 'left';
@@ -145,8 +151,50 @@ window.PerformanceReport = (() => {
     line(`Housekeeping confirmed: ${housekeeping.confirmed} / ${housekeeping.total}`);
     line(`Tasks done: ${tasks.done+analysis.submitted+housekeeping.confirmed} / ${tasks.total+analysis.total+housekeeping.total}`);
     line('Time target: ' + (state.targetMinutes || 2) + ' minute(s) | Elapsed: ' + formatTime(summary.elapsed));
-    line('Scoring: 100 points within target; minus 2 per full extra 5 seconds.',false,21);
+    line('Scoring: 100 points within target; minus 2 per full extra 10 seconds.',false,21);
     line('Generated: ' + new Date(capturedAt).toLocaleString(),false,21);
+    function wrapCell(value,width,size=21) {
+      ctx.font=`${size}px Arial`;const lines=[];let current='';
+      for(const paragraph of String(value||'—').split(/\r?\n/)) {
+        for(const word of paragraph.split(/\s+/)) {
+          if(current&&ctx.measureText(current+word).width>width){lines.push(current.trim());current='';}
+          for(const char of word){if(current&&ctx.measureText(current+char).width>width){lines.push(current.trim());current='';}current+=char;}
+          current+=' ';
+        }
+        lines.push(current.trim());current='';
+      }
+      return lines.length?lines:['—'];
+    }
+    const instructorNote='Note: This analysis report will be validated by your instructor, with a total possible score of 100/100. Your score will be given via GClass.';
+    function table(title,headers,widths,rows,emptyMessage) {
+      function startPage(continued=false) {
+        page(true);ctx.fillStyle='#203b32';ctx.font='bold 31px Arial';ctx.fillText(title+(continued?' (continued)':''),70,220);
+        ctx.font='21px Arial';ctx.fillText(`Student: ${student.fullName || 'Not provided'} | ID: ${student.studentId || 'Not provided'}`,70,262,1100);
+        y=305;
+        wrapCell(instructorNote,1100).forEach(text=>{ctx.fillStyle='#65795b';ctx.fillText(text,70,y);y+=30;});y+=16;
+        let x=70;headers.forEach((header,i)=>{ctx.fillStyle='#e9f0e2';ctx.fillRect(x,y,widths[i],48);ctx.strokeStyle='#ced9c7';ctx.strokeRect(x,y,widths[i],48);ctx.fillStyle='#294536';ctx.font='bold 17px Arial';ctx.fillText(header,x+12,y+30);x+=widths[i];});y+=48;
+      }
+      startPage();
+      const fullPageRowSpace=1580-y;
+      if(!rows.length){ctx.font='22px Arial';ctx.fillStyle='#7a887f';ctx.fillText(emptyMessage,82,y+42);return;}
+      rows.forEach((row,index)=>{
+        const columns=row.map((value,i)=>wrapCell(value,widths[i]-24));
+        const length=Math.max(...columns.map(lines=>lines.length));let offset=0;
+        if(length*30+24<=fullPageRowSpace&&y+length*30+24>1580)startPage(true);
+        while(offset<length){
+          const available=Math.floor((1580-y-24)/30);
+          if(available<1){startPage(true);continue;}
+          const count=Math.min(available,length-offset),height=count*30+24;let x=70;
+          columns.forEach((lines,i)=>{
+            ctx.fillStyle=index%2?'#f7f9f4':'#fff';ctx.fillRect(x,y,widths[i],height);ctx.strokeStyle='#d9e2d2';ctx.strokeRect(x,y,widths[i],height);
+            ctx.font='21px Arial';ctx.fillStyle='#203b32';ctx.textAlign='left';lines.slice(offset,offset+count).forEach((text,j)=>ctx.fillText(text,x+12,y+31+j*30));x+=widths[i];
+          });
+          y+=height;offset+=count;if(offset<length)startPage(true);
+        }
+      });
+    }
+    table('Analysis Report · Operator notes',['BOOKING ID','GUEST','GUEST STATEMENT','OPERATOR NOTE'],[120,200,300,480],operatorNotes.map(row=>[row.bookingId,row.name,row.guestRemarks||'N/A',row.remarks]),'No operator notes have been added yet.');
+    table('Analysis Report · Submitted analyses',['REQUEST ID','CHECK-IN PERIOD','TASK','ANALYSIS REMARK'],[120,190,260,530],submittedReports.map(row=>[row.id,`${row.from} to ${row.to}`,`${row.title}: ${row.task}`,row.remark]),'No analysis reports have been submitted yet.');
     const encoder = new TextEncoder(), chunks = [], offsets = [0]; let length = 0;
     const add = data => { const bytes = typeof data === 'string' ? encoder.encode(data) : data; chunks.push(bytes); length += bytes.length; };
     function object(id,content) { offsets[id] = length; add(`${id} 0 obj\n${content}\nendobj\n`); }

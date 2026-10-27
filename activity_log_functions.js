@@ -4,9 +4,13 @@ window.ActivityLog = (() => {
   const $ = id => document.getElementById(id);
   const statusLabel = status => status === 'confirmed' ? 'CONFIRMED BOOKED' : status === 'new' ? 'New Guest' : status === 'cancelled' ? 'CANCELLED' : status === 'refund' ? 'REFUND' : 'PENDING';
   const hasRemarks = entry => typeof entry.remarks === 'string' && entry.remarks.trim().length > 0;
+  // Cancellation work is fixed across the full dataset, independent of guest selection.
+  function cancellationTasks(state) {
+    return [...new Map([...window.GUESTS_DATA.filter(g=>g.status==='cancelled'),...state.guests.filter(g=>g.status==='cancelled')].map(g=>[g.id,g])).values()];
+  }
   function progress(state) {
     const bookings = state.guests.filter(g => ['pending','new','confirmed'].includes(g.status));
-    const cancelled = state.guests.filter(g => g.status === 'cancelled');
+    const cancelled = cancellationTasks(state);
     const remarked = cancelled.filter(g => (state.activityLog || []).some(row => row.bookingId === g.id && hasRemarks(row))).length;
     const booked = bookings.filter(g => g.status === 'confirmed').length;
     return { booked, bookings:bookings.length, remarked, cancelled:cancelled.length, done:booked+remarked, total:bookings.length+cancelled.length, pendingRemarks:cancelled.length-remarked };
@@ -22,7 +26,8 @@ window.ActivityLog = (() => {
   // One row per guest handled in this simulation. Reopening never duplicates a row.
   function sync(state) {
     if (!Array.isArray(state.activityLog)) state.activityLog = [];
-    state.guests.forEach(guest => {
+    const records = [...new Map([...state.guests,...cancellationTasks(state)].map(g=>[g.id,g])).values()];
+    records.forEach(guest => {
       let row = state.activityLog.find(entry => entry.bookingId === guest.id);
       if (!row && !guest.openedAt && !['confirmed','cancelled','refund'].includes(guest.status)) return;
       if (!row) { row = { bookingId:guest.id, remarks:'' }; state.activityLog.push(row); }

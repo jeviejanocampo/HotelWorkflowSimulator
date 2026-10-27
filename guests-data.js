@@ -1,5 +1,5 @@
 'use strict';
-// Editable demo records. Cancelled/refund examples are distributed among alternating pending/new guests.
+// Editable demo records. Status can be pending, new, cancelled, or refund.
 // guestRemarks is the guest statement; operator remarks are saved separately in Activity log.
 window.GUESTS_DATA = [
   {
@@ -851,5 +851,90 @@ window.GUESTS_DATA = [
     "nationality": "Filipino",
     "status": "new",
     "guestRemarks": "N/A"
+  },
+  {
+    "id": "BK-051",
+    "name": "Patricia Gomez",
+    "email": "patricia.gomez@example.com",
+    "phone": "+63 917 555 0151",
+    "room": "Deluxe Queen",
+    "checkIn": "2026-11-16",
+    "checkOut": "2026-11-18",
+    "nights": 2,
+    "occupants": 2,
+    "amount": 4800,
+    "bookingType": "existing",
+    "address": "70 Rizal Street, Cebu City",
+    "nationality": "Filipino",
+    "status": "cancelled",
+    "guestRemarks": "Cancelled because my flight was cancelled and I cannot reach Cebu."
+  },
+  {
+    "id": "BK-052",
+    "name": "Vincent Lim",
+    "email": "vincent.lim@example.com",
+    "phone": "+63 917 555 0152",
+    "room": "Deluxe Queen",
+    "checkIn": "2026-11-20",
+    "checkOut": "2026-11-22",
+    "nights": 2,
+    "occupants": 2,
+    "amount": 4800,
+    "bookingType": "existing",
+    "address": "71 Rizal Street, Cebu City",
+    "nationality": "Filipino",
+    "status": "cancelled",
+    "guestRemarks": "Cancelled because I am unwell and my doctor advised me not to travel."
+  },
+  {
+    "id": "BK-053",
+    "name": "Angela Rivera",
+    "email": "angela.rivera@example.com",
+    "phone": "+63 917 555 0153",
+    "room": "Deluxe Queen",
+    "checkIn": "2026-12-05",
+    "checkOut": "2026-12-07",
+    "nights": 2,
+    "occupants": 2,
+    "amount": 4800,
+    "bookingType": "existing",
+    "address": "72 Rizal Street, Cebu City",
+    "nationality": "Filipino",
+    "status": "cancelled",
+    "guestRemarks": "Cancelled because our business meeting was postponed to a later date."
+  },
+  {
+    "id": "BK-054",
+    "name": "Francis Tan",
+    "email": "francis.tan@example.com",
+    "phone": "+63 917 555 0154",
+    "room": "Deluxe Queen",
+    "checkIn": "2026-12-15",
+    "checkOut": "2026-12-17",
+    "nights": 2,
+    "occupants": 2,
+    "amount": 4800,
+    "bookingType": "existing",
+    "address": "73 Rizal Street, Cebu City",
+    "nationality": "Filipino",
+    "status": "cancelled",
+    "guestRemarks": "Cancelled because I accidentally made a duplicate reservation."
+  },
+  {
+    "id": "BK-055",
+    "name": "Monica Perez",
+    "email": "monica.perez@example.com",
+    "phone": "+63 917 555 0155",
+    "room": "Deluxe Queen",
+    "checkIn": "2026-12-27",
+    "checkOut": "2026-12-29",
+    "nights": 2,
+    "occupants": 2,
+    "amount": 4800,
+    "bookingType": "existing",
+    "address": "74 Rizal Street, Cebu City",
+    "nationality": "Filipino",
+    "status": "cancelled",
+    "guestRemarks": "Cancelled because an unexpected expense changed my travel budget."
   }
 ];

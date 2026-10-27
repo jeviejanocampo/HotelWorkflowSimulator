@@ -25,7 +25,7 @@
       });
       state.startedAt = Number.isFinite(saved.startedAt) ? saved.startedAt : null;
       state.student = saved.student || PerformanceReport.studentDetails();
-      state.activityLog = Array.isArray(saved.activityLog) ? saved.activityLog.filter(row => row && typeof row.bookingId === 'string' && state.guests.some(g => g.id === row.bookingId)).map(row => ({bookingId:row.bookingId,remarks:typeof row.remarks === 'string' ? row.remarks.slice(0,1000) : ''})) : [];
+      state.activityLog = Array.isArray(saved.activityLog) ? saved.activityLog.filter(row => row && typeof row.bookingId === 'string' && (state.guests.some(g => g.id === row.bookingId) || window.GUESTS_DATA.some(g => g.id === row.bookingId && g.status === 'cancelled'))).map(row => ({bookingId:row.bookingId,remarks:typeof row.remarks === 'string' ? row.remarks.slice(0,1000) : ''})) : [];
       state.finishedAt = Number.isFinite(saved.finishedAt) ? saved.finishedAt : null;
       if (state.finishedAt && ActivityLog.progress(state).done !== ActivityLog.progress(state).total) {
         state.startedAt = Date.now() - Math.max(0, state.finishedAt - (state.startedAt || state.finishedAt));

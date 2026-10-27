@@ -16,4 +16,4 @@ window.HOUSE_KEEPING_DATA = [
   {id:'HK-013',room:'303',task:'Waste removal and sanitation',officer:'Maria Abella',instructions:'Collect and segregate room waste. Clean bins, replace liners, inspect for spills, and sanitize affected surfaces.'},
   {id:'HK-014',room:'304',task:'Dusting and furniture care',officer:'Jose Dizon',instructions:'Dust accessible furniture, shelves, lamps, and ledges. Clean the desk and bedside tables, then restore the room layout.'},
   {id:'HK-015',room:'305',task:'Final housekeeping inspection',officer:'Ana Mercado',instructions:'Walk through the completed room. Verify cleanliness, supplies, linen, and presentation. Record any issue before releasing the room.'}
-].map(task=>({...task,status:'pending'}));
+].map((task,index)=>({...task,status:'pending',workStatus:index%2===0?'ongoing':'completed'}));

@@ -77,5 +77,8 @@ window.AnalysisReport = (() => {
     $('analysis-remark').value = ''; $('analysis-message').textContent = ''; $('analysis-submit-error').textContent = '';
     persist(); render();
   }
-  return {init,render,progress,reset};
+  function submittedReports() {
+    return requests.filter(request=>request.status==='submitted').map(request=>({...request}));
+  }
+  return {init,render,progress,reset,submittedReports};
 })();
