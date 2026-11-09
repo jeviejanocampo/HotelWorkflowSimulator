@@ -9,7 +9,10 @@ window.PerformanceReport = (() => {
   function metrics(state, now = Date.now()) {
     const elapsed = state.startedAt ? Math.max(0, (state.finishedAt || now) - state.startedAt) : 0;
     const target = (state.targetMinutes || 2) * 60000;
-    const penalty = Math.min(100, Math.floor(Math.max(0, elapsed - target) / 10000) * 2);
+    const extra = Math.max(0, elapsed - target);
+    const fastDeductions = Math.min(5, Math.floor(extra / 10000));
+    const slowDeductions = Math.floor(Math.max(0, extra - 50000) / 25000);
+    const penalty = Math.min(50, (fastDeductions + slowDeductions) * 2);
     return { elapsed, penalty, score: 100 - penalty };
   }
   function render(state) {
@@ -151,7 +154,7 @@ window.PerformanceReport = (() => {
     line(`Housekeeping confirmed: ${housekeeping.confirmed} / ${housekeeping.total}`);
     line(`Tasks done: ${tasks.done+analysis.submitted+housekeeping.confirmed} / ${tasks.total+analysis.total+housekeeping.total}`);
     line('Time target: ' + (state.targetMinutes || 2) + ' minute(s) | Elapsed: ' + formatTime(summary.elapsed));
-    line('Scoring: 100 points within target; minus 2 per full extra 10 seconds.',false,21);
+    line('Scoring: −2 points every extra 10 seconds until 90, then every 25 seconds. Minimum score: 50.',false,21);
     line('Generated: ' + new Date(capturedAt).toLocaleString(),false,21);
     function wrapCell(value,width,size=21) {
       ctx.font=`${size}px Arial`;const lines=[];let current='';
